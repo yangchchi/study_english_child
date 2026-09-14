@@ -1,0 +1,22 @@
+{
+  "name": "word-catch",
+  "short_name": "抓抓乐",
+  "description": "小学生英语三返昼夜 · 单词抓抓乐",
+  "start_url": "/today",
+  "display": "standalone",
+  "background_color": "#e8f6ff",
+  "theme_color": "#7dd3fc",
+  "lang": "zh-CN",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

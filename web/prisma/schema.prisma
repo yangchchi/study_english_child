@@ -1,0 +1,101 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String         @id @default(cuid())
+  username     String         @unique
+  passwordHash String
+  parentPinHash String?
+  createdAt    DateTime       @default(now())
+  profiles     ChildProfile[]
+}
+
+model ChildProfile {
+  id             String         @id @default(cuid())
+  userId         String
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  nickname       String
+  dailyNewWords  Int            @default(20)
+  avatarEmoji    String         @default("🦊")
+  createdAt      DateTime       @default(now())
+  progress       WordProgress[]
+  sessions       StudySession[]
+  recordings     Recording[]
+}
+
+model Theme {
+  id               String @id @default(cuid())
+  slug             String @unique
+  nameZh           String
+  emoji            String
+  sentenceTemplate String
+  sortOrder        Int
+  words            Word[]
+}
+
+model Word {
+  id           String         @id @default(cuid())
+  english      String
+  chinese      String
+  phonetic     String?
+  emoji        String         @default("⭐")
+  collocation  String?
+  example      String?
+  level        Int            @default(1)
+  themeId      String
+  theme        Theme          @relation(fields: [themeId], references: [id], onDelete: Cascade)
+  progress     WordProgress[]
+
+  @@unique([english, themeId])
+  @@index([english])
+}
+
+model WordProgress {
+  id             String   @id @default(cuid())
+  childId        String
+  child          ChildProfile @relation(fields: [childId], references: [id], onDelete: Cascade)
+  wordId         String
+  word           Word     @relation(fields: [wordId], references: [id], onDelete: Cascade)
+  status         String   @default("new") // new | learning | reviewing | mastered
+  srsStep        Int      @default(0)
+  nextReviewAt   DateTime?
+  wrongCount     Int      @default(0)
+  correctStreak  Int      @default(0)
+  lastResult     String?  // correct | wrong
+  updatedAt      DateTime @updatedAt
+
+  @@unique([childId, wordId])
+  @@index([childId, nextReviewAt])
+  @@index([childId, wrongCount])
+}
+
+model StudySession {
+  id          String   @id @default(cuid())
+  childId     String
+  child       ChildProfile @relation(fields: [childId], references: [id], onDelete: Cascade)
+  dateKey     String   // YYYY-MM-DD
+  phase       String   // morning | afternoon | evening
+  wordIds     Json     // string[] stored as JSON (SQLite)
+  score       Int      @default(0)
+  total       Int      @default(0)
+  completedAt DateTime?
+  createdAt   DateTime @default(now())
+
+  @@unique([childId, dateKey, phase])
+}
+
+model Recording {
+  id          String   @id @default(cuid())
+  childId     String
+  child       ChildProfile @relation(fields: [childId], references: [id], onDelete: Cascade)
+  wordId      String
+  dataUrl     String   // base64 data URL (短音频)
+  parentPass  Boolean?
+  createdAt   DateTime @default(now())
+}
