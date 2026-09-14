@@ -41,9 +41,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# sqlite
-/sqlite/
-*.db
+# sqlite runtime sidecars (keep wordcatch.db in repo)
 *.db-journal
 *.db-wal
 *.db-shm

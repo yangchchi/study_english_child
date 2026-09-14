@@ -7,8 +7,6 @@ node_modules/
 web/node_modules/
 web/.next/
 web/.env
-web/sqlite/
-*.db
 *.db-journal
 *.db-wal
 *.db-shm
