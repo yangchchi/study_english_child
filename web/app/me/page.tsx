@@ -5,6 +5,7 @@ import { signOut } from "next-auth/react";
 import { FormEvent, useEffect, useState } from "react";
 import { BottomNav } from "@/components/BottomNav";
 import { VoicePicker } from "@/components/VoicePicker";
+import { PetVisibleToggle } from "@/components/pet/PetVisibleToggle";
 
 export default function MePage() {
   const [stats, setStats] = useState<{ total: number; mastered: number; wrong: number; dailyNewWords: number } | null>(null);
@@ -55,7 +56,7 @@ export default function MePage() {
   }
 
   return (
-    <main className="mx-auto min-h-dvh max-w-lg px-4 pb-28 pt-6">
+    <main className="mx-auto min-h-dvh max-w-lg px-4 pb-52 pt-6">
       <h1 className="mb-4 text-2xl font-bold text-sky-900">🦊 我的</h1>
 
       <section className="mb-4 grid grid-cols-3 gap-3">
@@ -74,6 +75,8 @@ export default function MePage() {
       <div className="mb-4">
         <VoicePicker />
       </div>
+
+      <PetVisibleToggle />
 
       <section className="rounded-3xl bg-white/85 p-5 shadow-sm">
         <h2 className="font-bold text-slate-800">家长模式</h2>

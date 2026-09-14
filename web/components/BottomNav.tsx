@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { PetDock } from "@/components/pet/PetDock";
 
 const items = [
   { href: "/today", label: "今日", emoji: "🌟" },
@@ -13,7 +14,9 @@ const items = [
 export function BottomNav() {
   const pathname = usePathname();
   return (
-    <nav className="fixed bottom-0 inset-x-0 z-40 border-t border-sky-100 bg-white/95 backdrop-blur safe-bottom">
+    <>
+      <PetDock />
+      <nav className="fixed bottom-0 inset-x-0 z-40 border-t border-sky-100 bg-white/95 backdrop-blur safe-bottom">
       <ul className="mx-auto flex max-w-lg items-stretch justify-around px-2 py-2">
         {items.map((item) => {
           const active = pathname === item.href || pathname.startsWith(item.href + "/");
@@ -33,5 +36,6 @@ export function BottomNav() {
         })}
       </ul>
     </nav>
+    </>
   );
 }

@@ -66,7 +66,7 @@ export default function TodayPage() {
     : 0;
 
   return (
-    <main className="mx-auto min-h-dvh max-w-lg px-4 pb-28 pt-6">
+    <main className="mx-auto min-h-dvh max-w-lg px-4 pb-52 pt-6">
       <header className="mb-6 flex items-center justify-between">
         <div>
           <p className="text-sm text-slate-500">你好呀</p>

@@ -27,7 +27,7 @@ export default function LibraryPage() {
   }, []);
 
   return (
-    <main className="mx-auto min-h-dvh max-w-lg px-4 pb-28 pt-6">
+    <main className="mx-auto min-h-dvh max-w-lg px-4 pb-52 pt-6">
       <h1 className="mb-2 text-2xl font-bold text-sky-900">📚 词库地图</h1>
       <p className="mb-5 text-slate-600">按主题成群学习，一句型带走一串词</p>
       <div className="space-y-3">

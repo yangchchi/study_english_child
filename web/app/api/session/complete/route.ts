@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireChildProfile } from "@/lib/session-user";
 import { dateKey } from "@/lib/srs";
+import { awardSessionFood } from "@/lib/pet-store";
 
 const schema = z.object({
   phase: z.enum(["morning", "afternoon", "evening"]),
@@ -17,16 +18,32 @@ export async function POST(req: Request) {
   }
 
   const key = dateKey();
-  const session = await prisma.studySession.update({
-    where: {
-      childId_dateKey_phase: {
-        childId: ctx.profile.id,
-        dateKey: key,
-        phase: parsed.data.phase,
-      },
-    },
-    data: { completedAt: new Date() },
-  });
+  try {
+    const result = await prisma.$transaction(async (tx) => {
+      const session = await tx.studySession.findUnique({
+        where: {
+          childId_dateKey_phase: {
+            childId: ctx.profile.id,
+            dateKey: key,
+            phase: parsed.data.phase,
+          },
+        },
+      });
+      if (!session) return null;
+      const firstComplete = !session.completedAt;
+      const updated = await tx.studySession.update({
+        where: { id: session.id },
+        data: { completedAt: session.completedAt ?? new Date() },
+      });
+      const foodAwarded = firstComplete ? await awardSessionFood(ctx.profile.id, tx) : 0;
+      return { session: updated, foodAwarded };
+    });
 
-  return NextResponse.json({ session });
+    if (!result) {
+      return NextResponse.json({ error: "还没有开始这一关" }, { status: 404 });
+    }
+    return NextResponse.json(result);
+  } catch {
+    return NextResponse.json({ error: "还没有开始这一关" }, { status: 404 });
+  }
 }

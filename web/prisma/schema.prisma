@@ -27,6 +27,7 @@ model ChildProfile {
   progress       WordProgress[]
   sessions       StudySession[]
   recordings     Recording[]
+  pet            Pet?
 }
 
 model Theme {
@@ -98,4 +99,18 @@ model Recording {
   dataUrl     String   // base64 data URL (短音频)
   parentPass  Boolean?
   createdAt   DateTime @default(now())
+}
+
+model Pet {
+  id             String       @id @default(cuid())
+  childId        String       @unique
+  child          ChildProfile @relation(fields: [childId], references: [id], onDelete: Cascade)
+  species        String       // cat | dog
+  name           String
+  foodBalance    Int          @default(0)
+  lastFedDateKey String?
+  status         String       @default("alive") // alive | dead
+  visible        Boolean      @default(true)
+  adoptedAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 }

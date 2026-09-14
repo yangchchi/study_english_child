@@ -27,7 +27,7 @@ export default function WrongPage() {
   }, []);
 
   return (
-    <main className="mx-auto min-h-dvh max-w-lg px-4 pb-28 pt-6">
+    <main className="mx-auto min-h-dvh max-w-lg px-4 pb-52 pt-6">
       <h1 className="mb-2 text-2xl font-bold text-rose-700">🏝️ 错词岛</h1>
       <p className="mb-5 text-slate-600">能量只攻击薄弱点——再抓一次！</p>
 
