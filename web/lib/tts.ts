@@ -1,13 +1,29 @@
 "use client";
 
-export type VoiceGender = "female" | "male";
+import {
+  DEFAULT_SPEAK_RATE,
+  PIPER_VOICES,
+  getSavedSpeakRate,
+  type VoiceGender,
+} from "./piper-voices";
+
+export type { VoiceGender };
+export {
+  DEFAULT_SPEAK_RATE,
+  SPEAK_RATE_MAX,
+  SPEAK_RATE_MIN,
+  SPEAK_RATE_STEP,
+  clampSpeakRate,
+  getSavedSpeakRate,
+  saveSpeakRate,
+} from "./piper-voices";
 
 export type VoicePreset = {
   id: VoiceGender;
   label: string;
   emoji: string;
   desc: string;
-  /** Preferred Web Speech / system voice name fragments, best-first */
+  /** Preferred Web Speech / system voice name fragments (fallback only) */
   nameHints: string[];
   langHints: string[];
   rate: number;
@@ -15,56 +31,79 @@ export type VoicePreset = {
 };
 
 /**
- * 女声候选来自用户清单（Allison / Ava / Victoria / Susan / Serena / Tessa / Martha）。
- * 适合小朋友的排序依据：清晰度、美式小学教材常用、语气亲切、口音不过偏。
- * 男声清单未提供，选用教育场景常见的清晰英式 Daniel（美式回退 Alex / Fred）。
+ * Primary playback is Piper (local ONNX). Web Speech presets below are
+ * fallback when Piper models / WASM fail to load.
  */
 export const VOICE_PRESETS: VoicePreset[] = [
   {
     id: "female",
-    label: "女老师 Ava",
+    label: PIPER_VOICES.female.label,
     emoji: "👩‍🏫",
-    desc: "美式、清晰亲切（首选 Ava，其次 Allison）",
+    desc: PIPER_VOICES.female.desc,
     nameHints: [
-      "Ava",
-      "Allison",
-      "Serena",
-      "Susan",
       "Samantha",
       "Google US English",
       "Microsoft Aria",
       "Microsoft Jenny",
-      "Kathy",
-      "Tessa",
-      "Victoria",
-      "Martha",
+      "Ava",
+      "Allison",
+      "Zoe",
+      "Susan",
     ],
     langHints: ["en-US", "en_US", "en-GB", "en_GB"],
-    rate: 0.88,
-    pitch: 1.05,
+    rate: DEFAULT_SPEAK_RATE,
+    pitch: 1,
   },
   {
     id: "male",
-    label: "男老师 Daniel",
+    label: PIPER_VOICES.male.label,
     emoji: "👨‍🏫",
-    desc: "清晰标准英式（适合对比听音）",
+    desc: PIPER_VOICES.male.desc,
     nameHints: [
       "Daniel",
-      "Alex",
-      "Aaron",
-      "Tom",
       "Google UK English Male",
       "Microsoft Guy",
-      "Microsoft Ryan",
+      "Alex",
+      "Aaron",
       "Fred",
     ],
-    langHints: ["en-GB", "en_GB", "en-US", "en_US"],
-    rate: 0.9,
-    pitch: 0.95,
+    langHints: ["en-US", "en_US", "en-GB", "en_GB"],
+    rate: DEFAULT_SPEAK_RATE,
+    pitch: 1,
   },
 ];
 
 const STORAGE_KEY = "wordcatch-voice-gender";
+
+const QUALITY_BOOST = [
+  "premium",
+  "enhanced",
+  "neural",
+  "natural",
+  "online",
+  "google",
+  "microsoft",
+];
+
+const ROBOTIC_PENALTY = [
+  "compact",
+  "eloquence",
+  "albert",
+  "bad news",
+  "bahh",
+  "bells",
+  "boing",
+  "bubbles",
+  "cellos",
+  "good news",
+  "jester",
+  "organ",
+  "superstar",
+  "trinoids",
+  "whisper",
+  "zarvox",
+  "junior",
+];
 
 export function getSavedVoiceGender(): VoiceGender {
   if (typeof window === "undefined") return "female";
@@ -83,11 +122,12 @@ export function getPreset(gender: VoiceGender = getSavedVoiceGender()): VoicePre
 
 function scoreVoice(voice: SpeechSynthesisVoice, preset: VoicePreset): number {
   const name = voice.name || "";
+  const lower = name.toLowerCase();
   const lang = (voice.lang || "").replace("_", "-");
   let score = 0;
 
   preset.nameHints.forEach((hint, i) => {
-    if (name.toLowerCase().includes(hint.toLowerCase())) {
+    if (lower.includes(hint.toLowerCase())) {
       score += 100 - i * 3;
     }
   });
@@ -100,7 +140,17 @@ function scoreVoice(voice: SpeechSynthesisVoice, preset: VoicePreset): number {
     if (lang.toLowerCase() === h.toLowerCase()) score += 12;
   });
 
-  if (voice.localService) score += 5;
+  for (const tip of QUALITY_BOOST) {
+    if (lower.includes(tip)) score += 40;
+  }
+
+  for (const tip of ROBOTIC_PENALTY) {
+    if (lower.includes(tip)) score -= 80;
+  }
+
+  if (!voice.localService) score += 15;
+  else score += 5;
+
   return score;
 }
 
@@ -120,9 +170,9 @@ export function pickVoice(
       best = v;
     }
   }
-  // If nothing matched hints, still return a reasonable English voice
   if (bestScore <= 0) {
     return (
+      pool.find((v) => /premium|enhanced|neural|google|microsoft/i.test(v.name)) ||
       pool.find((v) => /en-US/i.test(v.lang)) ||
       pool.find((v) => /en-GB/i.test(v.lang)) ||
       pool[0] ||
@@ -154,16 +204,15 @@ export function loadVoices(): Promise<SpeechSynthesisVoice[]> {
         }
       };
       window.speechSynthesis.onvoiceschanged = onChange;
-      // Safari sometimes needs a tick
       setTimeout(() => resolve(read()), 500);
     });
   }
   return voicesReady;
 }
 
-export async function speakEnglish(
+async function speakWithWebSpeech(
   text: string,
-  gender: VoiceGender = getSavedVoiceGender(),
+  gender: VoiceGender,
 ): Promise<string | null> {
   if (typeof window === "undefined" || !window.speechSynthesis) return null;
   const preset = getPreset(gender);
@@ -178,10 +227,25 @@ export async function speakEnglish(
   } else {
     u.lang = preset.langHints[0]?.replace("_", "-") || "en-US";
   }
-  u.rate = preset.rate;
+  u.rate = getSavedSpeakRate();
   u.pitch = preset.pitch;
   window.speechSynthesis.speak(u);
-  return voice?.name ?? null;
+  return voice?.name ?? "系统默认";
+}
+
+export async function speakEnglish(
+  text: string,
+  gender: VoiceGender = getSavedVoiceGender(),
+): Promise<string | null> {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const { speakWithPiper } = await import("./piper-engine");
+    return await speakWithPiper(text, gender);
+  } catch (err) {
+    console.warn("[tts] Piper failed, falling back to Web Speech", err);
+    return speakWithWebSpeech(text, gender);
+  }
 }
 
 export function listMatchedVoices(gender: VoiceGender): Promise<

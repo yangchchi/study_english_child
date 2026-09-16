@@ -1,45 +1,67 @@
 import { describe, expect, it } from "vitest";
 import { pickVoice, VOICE_PRESETS } from "./tts";
 
-function fakeVoice(name: string, lang: string): SpeechSynthesisVoice {
+function fakeVoice(
+  name: string,
+  lang: string,
+  localService = true,
+): SpeechSynthesisVoice {
   return {
     name,
     lang,
     default: false,
-    localService: true,
+    localService,
     voiceURI: name,
   } as SpeechSynthesisVoice;
 }
 
 describe("tts voice picking", () => {
-  it("prefers Ava over Victoria for female", () => {
+  it("prefers Samantha Enhanced over compact Ava", () => {
+    const voices = [
+      fakeVoice("Ava", "en-US"),
+      fakeVoice("Samantha (Enhanced)", "en-US"),
+      fakeVoice("Victoria", "en-US"),
+    ];
+    const picked = pickVoice(VOICE_PRESETS[0], voices);
+    expect(picked?.name).toBe("Samantha (Enhanced)");
+  });
+
+  it("prefers Google US English over robotic Eloquence voices", () => {
+    const voices = [
+      fakeVoice("Albert", "en-US"),
+      fakeVoice("Google US English", "en-US", false),
+      fakeVoice("Kathy", "en-US"),
+    ];
+    const picked = pickVoice(VOICE_PRESETS[0], voices);
+    expect(picked?.name).toBe("Google US English");
+  });
+
+  it("falls back to Ava when Samantha missing", () => {
     const voices = [
       fakeVoice("Victoria", "en-US"),
       fakeVoice("Ava", "en-US"),
-      fakeVoice("Martha", "en-GB"),
-      fakeVoice("Tessa", "en-ZA"),
+      fakeVoice("Allison", "en-US"),
     ];
     const picked = pickVoice(VOICE_PRESETS[0], voices);
     expect(picked?.name).toBe("Ava");
   });
 
-  it("falls back to Allison when Ava missing", () => {
-    const voices = [
-      fakeVoice("Victoria", "en-US"),
-      fakeVoice("Allison", "en-US"),
-      fakeVoice("Susan", "en-US"),
-    ];
-    const picked = pickVoice(VOICE_PRESETS[0], voices);
-    expect(picked?.name).toBe("Allison");
-  });
-
-  it("prefers Daniel for male", () => {
+  it("prefers Daniel Premium for male", () => {
     const voices = [
       fakeVoice("Fred", "en-US"),
-      fakeVoice("Daniel", "en-GB"),
+      fakeVoice("Daniel (Premium)", "en-GB"),
       fakeVoice("Alex", "en-US"),
     ];
     const picked = pickVoice(VOICE_PRESETS[1], voices);
-    expect(picked?.name).toBe("Daniel");
+    expect(picked?.name).toBe("Daniel (Premium)");
+  });
+
+  it("penalizes Compact voices when a better match exists", () => {
+    const voices = [
+      fakeVoice("Samantha Compact", "en-US"),
+      fakeVoice("Samantha", "en-US"),
+    ];
+    const picked = pickVoice(VOICE_PRESETS[0], voices);
+    expect(picked?.name).toBe("Samantha");
   });
 });
