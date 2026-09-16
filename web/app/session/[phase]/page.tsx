@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ThinkTimer, speakEnglish } from "@/components/ThinkTimer";
 import { VoicePicker } from "@/components/VoicePicker";
+import { pickChoices } from "@/lib/choices";
+import { PET_FOOD_AWARD_KEY } from "@/lib/pet";
 
 type Word = {
   id: string;
@@ -48,12 +50,10 @@ export default function SessionPage() {
     (w: Word, all: Word[]) => {
       if (phase === "afternoon") {
         const pool = all.filter((x) => x.id !== w.id).map((x) => x.english);
-        const distractors = shuffle(pool).slice(0, 3);
-        return shuffle([w.english, ...distractors]);
+        return pickChoices(w.english, pool);
       }
       const pool = all.filter((x) => x.id !== w.id).map((x) => x.chinese);
-      const distractors = shuffle(pool).slice(0, 3);
-      return shuffle([w.chinese, ...distractors]);
+      return pickChoices(w.chinese, pool);
     },
     [phase],
   );
@@ -95,7 +95,14 @@ export default function SessionPage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ phase }),
-        }).then(() => router.push("/today"));
+        })
+          .then(async (r) => {
+            const d = await r.json().catch(() => ({}));
+            if (typeof d.foodAwarded === "number" && d.foodAwarded > 0) {
+              sessionStorage.setItem(PET_FOOD_AWARD_KEY, String(d.foodAwarded));
+            }
+          })
+          .finally(() => router.push("/today"));
       } else {
         setIdx((i) => i + 1);
       }
@@ -193,9 +200,9 @@ export default function SessionPage() {
               <p className="mt-3 text-2xl font-bold text-sky-700">{word.english}</p>
             )}
             <div className="mt-6 grid w-full grid-cols-1 gap-3">
-              {choices.map((c) => (
+              {choices.map((c, i) => (
                 <button
-                  key={c}
+                  key={`${i}-${c}`}
                   disabled={thinking || feedback !== null}
                   onClick={() => submit(c === word.english)}
                   className="rounded-2xl border-2 border-sky-100 bg-sky-50 py-3 text-lg font-semibold text-sky-900 active:scale-[0.98] disabled:opacity-50"
@@ -223,9 +230,9 @@ export default function SessionPage() {
             <h2 className="mt-3 text-4xl font-bold text-indigo-800">{word.english}</h2>
             <p className="mt-4 text-lg text-slate-600">中文意思是？</p>
             <div className="mt-4 grid w-full grid-cols-1 gap-3">
-              {choices.map((c) => (
+              {choices.map((c, i) => (
                 <button
-                  key={c}
+                  key={`${i}-${c}`}
                   disabled={feedback !== null}
                   onClick={() => submit(c === word.chinese)}
                   className="rounded-2xl border-2 border-indigo-100 bg-indigo-50 py-3 text-lg font-semibold disabled:opacity-50"
@@ -260,13 +267,4 @@ export default function SessionPage() {
       </div>
     </main>
   );
-}
-
-function shuffle<T>(arr: T[]): T[] {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
 }

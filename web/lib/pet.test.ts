@@ -4,6 +4,7 @@ import {
   applyRevive,
   daysBetweenKeys,
   evaluatePet,
+  getPetLine,
 } from "./pet";
 
 describe("daysBetweenKeys", () => {
@@ -166,5 +167,13 @@ describe("applyRevive", () => {
         "2026-09-14",
       ),
     ).toEqual({ ok: false, reason: "no_food" });
+  });
+});
+
+describe("getPetLine", () => {
+  it("returns mood-aware encouragement for a context", () => {
+    expect(getPetLine("full", "feed", 0)).toBe("好吃！谢谢你！");
+    expect(getPetLine("critical", "idle", 0)).toBe("明天不喂会倒下！");
+    expect(getPetLine("dead", "revive", 0)).toContain("回来");
   });
 });

@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -82,7 +82,7 @@ model StudySession {
   child       ChildProfile @relation(fields: [childId], references: [id], onDelete: Cascade)
   dateKey     String   // YYYY-MM-DD
   phase       String   // morning | afternoon | evening
-  wordIds     Json     // string[] stored as JSON (SQLite)
+  wordIds     Json     // string[] stored as JSON
   score       Int      @default(0)
   total       Int      @default(0)
   completedAt DateTime?

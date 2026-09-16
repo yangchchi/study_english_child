@@ -1,15 +1,31 @@
 services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: wordcatch
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d wordcatch"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   web:
     build: ./web
     restart: unless-stopped
     ports:
       - "3000:3000"
     environment:
-      DATABASE_URL: file:../sqlite/wordcatch.db
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/wordcatch
       NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-word-catch-dev-secret-change-me}
-    volumes:
-      - sqlite_data:/app/sqlite
+    depends_on:
+      db:
+        condition: service_healthy
 
 volumes:
-  sqlite_data:
+  pg_data:
