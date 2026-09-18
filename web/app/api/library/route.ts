@@ -37,6 +37,7 @@ export async function GET() {
           id: w.id,
           english: w.english,
           chinese: w.chinese,
+          phonetic: w.phonetic,
           emoji: w.emoji,
           status: w.progress[0]?.status ?? "new",
           srsStep: w.progress[0]?.srsStep ?? 0,

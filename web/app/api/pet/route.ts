@@ -14,13 +14,13 @@ const errors = {
   missing: "还没有宠物",
   exists: "已经有宠物了",
   dead: "它已经倒下了，先复活吧",
-  no_food: "粮食不够，先去完成一关吧",
+  no_food: "粮食不够，先去学习攒粮吧",
   not_dead: "它还活着哦",
 } as const;
 
 function fail(reason: keyof typeof errors, extra?: { noFoodRevive?: boolean }) {
   const message =
-    extra?.noFoodRevive && reason === "no_food" ? "复活需要 3 份粮食" : errors[reason];
+    extra?.noFoodRevive && reason === "no_food" ? "复活需要 20 份粮食" : errors[reason];
   return NextResponse.json({ error: message }, { status: 400 });
 }
 

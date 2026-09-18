@@ -144,7 +144,7 @@ export function PetDock() {
       {!pet ? (
         <section className="pet-dock pet-dock-adopt" aria-label="领养宠物">
           <p className="pet-dock-title">领养一个小伙伴</p>
-          <p className="pet-dock-copy">完成一关就能换粮食喂它</p>
+          <p className="pet-dock-copy">学完今日或攒粮就能换粮食</p>
           <label className="pet-name-field">
             给它起个名（可空）
             <input
@@ -226,7 +226,7 @@ export function PetDock() {
                       disabled={!pet.canRevive || busy}
                       onClick={revive}
                     >
-                      {pet.canRevive ? "复活（3 粮）" : "复活要 3 粮"}
+                      {pet.canRevive ? "复活（20 粮）" : "复活要 20 粮"}
                     </button>
                   ) : pet.fedToday ? (
                     <button type="button" className="pet-feed-btn" disabled>
@@ -239,7 +239,7 @@ export function PetDock() {
                       disabled={!pet.canFeed || busy}
                       onClick={feed}
                     >
-                      {pet.canFeed ? "喂一喂" : "先去学习换粮"}
+                      {pet.canFeed ? "喂一喂（20）" : "先去学习换粮"}
                     </button>
                   )}
                   <button

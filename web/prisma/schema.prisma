@@ -103,15 +103,18 @@ model Recording {
 }
 
 model Pet {
-  id             String       @id @default(cuid())
-  childId        String       @unique
-  child          ChildProfile @relation(fields: [childId], references: [id], onDelete: Cascade)
-  species        String       // cat | dog
-  name           String
-  foodBalance    Int          @default(0)
-  lastFedDateKey String?
-  status         String       @default("alive") // alive | dead
-  visible        Boolean      @default(true)
-  adoptedAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  id                String       @id @default(cuid())
+  childId           String       @unique
+  child             ChildProfile @relation(fields: [childId], references: [id], onDelete: Cascade)
+  species           String       // cat | dog
+  name              String
+  foodBalance       Int          @default(0)
+  lastFedDateKey    String?
+  foodSettledAt     DateTime     @default(now()) // 上次结算 24h 扣粮的时间
+  foodEarnedToday   Int          @default(0)
+  foodEarnedDateKey String?
+  status            String       @default("alive") // alive | dead
+  visible           Boolean      @default(true)
+  adoptedAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
 }

@@ -1,16 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { BottomNav } from "@/components/BottomNav";
 import { FoodStatsBadge } from "@/components/FoodStatsBadge";
 
 type Plan = {
-  profile: { nickname: string; avatarEmoji: string; dailyNewWords: number };
+  profile: { nickname: string; avatarEmoji: string };
   plan: {
     dateKey: string;
     newCount: number;
     reviewCount: number;
+    roundComplete: boolean;
     phases: Record<
       "morning" | "afternoon" | "evening",
       { completed: boolean; score: number; total: number }
@@ -46,12 +47,13 @@ const cards = [
   },
 ];
 
-export default function TodayPage() {
+export default function GrainPage() {
   const [data, setData] = useState<Plan | null>(null);
   const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
-    fetch("/api/today")
+  const load = useCallback(() => {
+    fetch("/api/grain")
       .then(async (r) => {
         if (r.status === 401) {
           window.location.href = "/login";
@@ -63,13 +65,38 @@ export default function TodayPage() {
       .catch(() => setError("加载失败，请刷新"));
   }, []);
 
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  async function restart() {
+    setBusy(true);
+    setError("");
+    try {
+      const r = await fetch("/api/grain", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "restart" }),
+      });
+      const d = await r.json();
+      if (!r.ok) {
+        setError(d.error || "再开一轮失败");
+        return;
+      }
+      setData(d);
+    } catch {
+      setError("再开一轮失败");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <main className="mx-auto min-h-dvh max-w-lg px-4 pb-52 pt-6">
       <header className="mb-6 flex items-center justify-between">
         <div>
-          <p className="text-sm text-slate-500">你好呀</p>
-          <h1 className="text-2xl font-bold text-sky-900">
-            {data ? `${data.profile.avatarEmoji} ${data.profile.nickname}` : "加载中…"}
+          <h1 className="text-2xl font-bold text-emerald-900">
+            {data ? `${data.profile.avatarEmoji} 攒粮` : "加载中…"}
           </h1>
         </div>
         <FoodStatsBadge
@@ -80,18 +107,27 @@ export default function TodayPage() {
 
       {error && <p className="mb-4 text-rose-600">{error}</p>}
 
-      {data && (
-        <p className="mb-4 rounded-2xl bg-white/70 px-4 py-3 text-slate-700">
-          今天准备抓 <b className="text-emerald-600">{data.plan.newCount}</b> 个新词，
-          打捞 <b className="text-sky-600">{data.plan.reviewCount}</b> 个老朋友。
-          三关全过得 <b className="text-amber-600">20 粮</b>！
-        </p>
+      <p className="mb-4 rounded-2xl bg-white/70 px-4 py-3 text-slate-700">
+        随机抓 <b className="text-emerald-600">10</b> 个词，三关全过得{" "}
+        <b className="text-amber-600">10 粮</b>，可一直练。
+      </p>
+
+      {data?.plan.roundComplete && (
+        <button
+          type="button"
+          disabled={busy}
+          onClick={restart}
+          className="mb-4 w-full rounded-2xl bg-emerald-500 py-3 text-lg font-bold text-white shadow active:scale-[0.98] disabled:opacity-60"
+        >
+          {busy ? "准备中…" : "再来一轮 🌾 +10"}
+        </button>
       )}
 
       <div className="space-y-4">
         {cards.map((c) => {
           const phase = data?.plan.phases[c.phase];
           const done = phase?.completed;
+          const dateKey = data?.plan.dateKey;
           return (
             <section
               key={c.phase}
@@ -114,7 +150,7 @@ export default function TodayPage() {
                   </span>
                 ) : (
                   <Link
-                    href={`/session/${c.phase}`}
+                    href={`/session/${c.phase}?from=grain&dateKey=${encodeURIComponent(dateKey ?? "")}`}
                     className={`rounded-2xl ${c.btn} px-4 py-3 text-sm font-bold text-white shadow active:scale-95`}
                   >
                     开始

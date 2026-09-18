@@ -6,6 +6,7 @@ import { PetDock } from "@/components/pet/PetDock";
 
 const items = [
   { href: "/today", label: "今日", emoji: "🌟" },
+  { href: "/grain", label: "攒粮", emoji: "🌾" },
   { href: "/library", label: "词库", emoji: "📚" },
   { href: "/wrong", label: "错词", emoji: "🏝️" },
   { href: "/me", label: "我的", emoji: "🦊" },

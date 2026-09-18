@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { BottomNav } from "@/components/BottomNav";
+import { PhoneticText } from "@/components/PhoneticText";
 
 type Theme = {
   id: string;
@@ -10,7 +11,14 @@ type Theme = {
   total: number;
   mastered: number;
   sentenceTemplate: string;
-  words: { id: string; english: string; chinese: string; emoji: string; status: string }[];
+  words: {
+    id: string;
+    english: string;
+    chinese: string;
+    phonetic: string | null;
+    emoji: string;
+    status: string;
+  }[];
 };
 
 export default function LibraryPage() {
@@ -63,6 +71,7 @@ export default function LibraryPage() {
                     >
                       <span className="mr-1">{w.emoji}</span>
                       <b>{w.english}</b>
+                      <PhoneticText phonetic={w.phonetic} className="text-xs" />
                       <div className="text-xs opacity-80">{w.chinese}</div>
                     </li>
                   ))}

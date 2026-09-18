@@ -3,12 +3,14 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { BottomNav } from "@/components/BottomNav";
+import { PhoneticText } from "@/components/PhoneticText";
 import { speakEnglish } from "@/components/ThinkTimer";
 
 type WrongWord = {
   id: string;
   english: string;
   chinese: string;
+  phonetic: string | null;
   emoji: string;
   wrongCount: number;
   themeName: string;
@@ -49,6 +51,7 @@ export default function WrongPage() {
                 <div className="font-bold text-slate-800">
                   {w.english} · {w.chinese}
                 </div>
+                <PhoneticText phonetic={w.phonetic} className="mt-0.5 text-sm" />
                 <div className="text-xs text-slate-500">
                   {w.themeName} · 错过 {w.wrongCount} 次
                 </div>

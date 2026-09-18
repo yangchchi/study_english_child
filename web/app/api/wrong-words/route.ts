@@ -18,6 +18,7 @@ export async function GET() {
       id: r.word.id,
       english: r.word.english,
       chinese: r.word.chinese,
+      phonetic: r.word.phonetic,
       emoji: r.word.emoji,
       wrongCount: r.wrongCount,
       themeName: r.word.theme.nameZh,

@@ -5,6 +5,10 @@ import {
   applyRevive,
   defaultPetName,
   evaluatePet,
+  FEED_COST,
+  REVIVE_COST,
+  rollFoodEarnedToday,
+  settleFoodConsumption,
   type PetSpecies,
   type PublicPet,
 } from "./pet";
@@ -20,42 +24,80 @@ type PetRow = {
   name: string;
   foodBalance: number;
   lastFedDateKey: string | null;
+  foodSettledAt: Date;
+  foodEarnedToday: number;
+  foodEarnedDateKey: string | null;
   status: string;
   visible: boolean;
   adoptedAt: Date;
 };
 
+async function persistSettlement(
+  pet: PetRow,
+  now: Date,
+  db: Prisma.TransactionClient | typeof prisma = prisma,
+): Promise<PetRow> {
+  const settled = settleFoodConsumption(pet.foodBalance, pet.foodSettledAt, now);
+  const status =
+    settled.foodBalance <= 0 ? "dead" : pet.status === "dead" ? "dead" : "alive";
+  const unchanged =
+    settled.foodBalance === pet.foodBalance &&
+    settled.lastSettledAt.getTime() === pet.foodSettledAt.getTime() &&
+    status === pet.status;
+  if (unchanged) return pet;
+  return db.pet.update({
+    where: { id: pet.id },
+    data: {
+      foodBalance: settled.foodBalance,
+      foodSettledAt: settled.lastSettledAt,
+      status,
+    },
+  });
+}
+
 function toPublic(pet: PetRow, now: Date): PublicPet {
   const todayKey = dateKey(now);
   const view = evaluatePet({
     status: pet.status === "dead" ? "dead" : "alive",
+    foodBalance: pet.foodBalance,
     lastFedDateKey: pet.lastFedDateKey,
-    adoptedDateKey: dateKey(pet.adoptedAt),
     todayKey,
+  });
+  const earned = rollFoodEarnedToday({
+    foodEarnedToday: pet.foodEarnedToday,
+    foodEarnedDateKey: pet.foodEarnedDateKey,
+    todayKey,
+    amount: 0,
   });
   return {
     id: pet.id,
     species: pet.species === "dog" ? "dog" : "cat",
     name: pet.name,
     foodBalance: pet.foodBalance,
+    foodEarnedToday: earned.foodEarnedToday,
     visible: pet.visible,
     status: view.status,
     mood: view.mood,
     daysUnfed: view.daysUnfed,
     fedToday: view.fedToday,
-    canFeed: view.status === "alive" && pet.foodBalance >= 1 && !view.fedToday,
-    canRevive: view.status === "dead" && pet.foodBalance >= 3,
+    canFeed: view.status === "alive" && pet.foodBalance >= FEED_COST && !view.fedToday,
+    canRevive: view.status === "dead" && pet.foodBalance >= REVIVE_COST,
   };
 }
 
 export async function getSettledPet(childId: string, now = new Date()) {
   const pet = await prisma.pet.findUnique({ where: { childId } });
   if (!pet) return null;
-  const publicPet = toPublic(pet, now);
-  if (publicPet.status === "dead" && pet.status !== "dead") {
-    await prisma.pet.update({ where: { id: pet.id }, data: { status: "dead" } });
-  }
-  return publicPet;
+  const row = await persistSettlement(pet, now);
+  return toPublic(row, now);
+}
+
+export async function getFoodStats(childId: string, now = new Date()) {
+  const pet = await getSettledPet(childId, now);
+  return {
+    foodBalance: pet?.foodBalance ?? 0,
+    foodEarnedToday: pet?.foodEarnedToday ?? 0,
+  };
 }
 
 export async function adoptPet(
@@ -66,38 +108,37 @@ export async function adoptPet(
   const existing = await prisma.pet.findUnique({ where: { childId } });
   if (existing) return { ok: false as const, reason: "exists" as const };
   const trimmed = name?.trim() ?? "";
+  const now = new Date();
   const pet = await prisma.pet.create({
     data: {
       childId,
       species,
       name: trimmed || defaultPetName(species),
+      foodSettledAt: now,
     },
   });
-  return { ok: true as const, pet: toPublic(pet, new Date()) };
+  return { ok: true as const, pet: toPublic(pet, now) };
 }
 
 export async function feedPet(childId: string, now = new Date()) {
   const pet = await prisma.pet.findUnique({ where: { childId } });
   if (!pet) return { ok: false as const, reason: "missing" as const };
-  const settled = toPublic(pet, now);
-  if (settled.status === "dead" && pet.status !== "dead") {
-    await prisma.pet.update({ where: { id: pet.id }, data: { status: "dead" } });
-  }
+  const row = await persistSettlement(pet, now);
   const result = applyFeed(
     {
-      status: settled.status,
-      foodBalance: pet.foodBalance,
-      lastFedDateKey: pet.lastFedDateKey,
+      status: row.status === "dead" ? "dead" : "alive",
+      foodBalance: row.foodBalance,
+      lastFedDateKey: row.lastFedDateKey,
     },
     dateKey(now),
   );
   if (!result.ok) return result;
   const updated = await prisma.pet.update({
-    where: { id: pet.id },
+    where: { id: row.id },
     data: {
       foodBalance: result.foodBalance,
       lastFedDateKey: result.lastFedDateKey,
-      status: "alive",
+      status: result.foodBalance <= 0 ? "dead" : "alive",
     },
   });
   return {
@@ -110,25 +151,23 @@ export async function feedPet(childId: string, now = new Date()) {
 export async function revivePet(childId: string, now = new Date()) {
   const pet = await prisma.pet.findUnique({ where: { childId } });
   if (!pet) return { ok: false as const, reason: "missing" as const };
-  const settled = toPublic(pet, now);
-  if (settled.status === "dead" && pet.status !== "dead") {
-    await prisma.pet.update({ where: { id: pet.id }, data: { status: "dead" } });
-  }
+  const row = await persistSettlement(pet, now);
   const result = applyRevive(
     {
-      status: settled.status,
-      foodBalance: pet.foodBalance,
-      lastFedDateKey: pet.lastFedDateKey,
+      status: row.status === "dead" || row.foodBalance <= 0 ? "dead" : "alive",
+      foodBalance: row.foodBalance,
+      lastFedDateKey: row.lastFedDateKey,
     },
     dateKey(now),
   );
   if (!result.ok) return result;
   const updated = await prisma.pet.update({
-    where: { id: pet.id },
+    where: { id: row.id },
     data: {
       status: result.status,
       foodBalance: result.foodBalance,
       lastFedDateKey: result.lastFedDateKey,
+      foodSettledAt: now,
     },
   });
   return { ok: true as const, pet: toPublic(updated, now) };
@@ -137,26 +176,45 @@ export async function revivePet(childId: string, now = new Date()) {
 export async function setPetVisible(childId: string, visible: boolean, now = new Date()) {
   const pet = await prisma.pet.findUnique({ where: { childId } });
   if (!pet) return { ok: false as const, reason: "missing" as const };
+  const row = await persistSettlement(pet, now);
   const updated = await prisma.pet.update({
-    where: { id: pet.id },
+    where: { id: row.id },
     data: { visible },
   });
-  const settled = toPublic(updated, now);
-  if (settled.status === "dead" && updated.status !== "dead") {
-    await prisma.pet.update({ where: { id: pet.id }, data: { status: "dead" } });
-  }
-  return { ok: true as const, pet: { ...settled, visible } };
+  return { ok: true as const, pet: { ...toPublic(updated, now), visible } };
 }
 
+export async function awardFood(
+  childId: string,
+  amount: number,
+  db: Prisma.TransactionClient | typeof prisma = prisma,
+  now = new Date(),
+) {
+  if (amount <= 0) return 0;
+  const pet = await db.pet.findUnique({ where: { childId } });
+  if (!pet) return 0;
+  const todayKey = dateKey(now);
+  const earned = rollFoodEarnedToday({
+    foodEarnedToday: pet.foodEarnedToday,
+    foodEarnedDateKey: pet.foodEarnedDateKey,
+    todayKey,
+    amount,
+  });
+  await db.pet.update({
+    where: { id: pet.id },
+    data: {
+      foodBalance: { increment: amount },
+      foodEarnedToday: earned.foodEarnedToday,
+      foodEarnedDateKey: earned.foodEarnedDateKey,
+    },
+  });
+  return amount;
+}
+
+/** @deprecated use awardFood with explicit amount */
 export async function awardSessionFood(
   childId: string,
   db: Prisma.TransactionClient | typeof prisma = prisma,
 ) {
-  const pet = await db.pet.findUnique({ where: { childId } });
-  if (!pet) return 0;
-  await db.pet.update({
-    where: { id: pet.id },
-    data: { foodBalance: { increment: 1 } },
-  });
-  return 1;
+  return awardFood(childId, 1, db);
 }

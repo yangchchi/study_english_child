@@ -1,9 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { PhoneticText } from "@/components/PhoneticText";
 import { ThinkTimer, speakEnglish } from "@/components/ThinkTimer";
 import { VoicePicker } from "@/components/VoicePicker";
+import { phoneticFor } from "@/data/phonetics";
 import { pickChoices } from "@/lib/choices";
 import { PET_FOOD_AWARD_KEY } from "@/lib/pet";
 
@@ -11,6 +13,7 @@ type Word = {
   id: string;
   english: string;
   chinese: string;
+  phonetic: string | null;
   emoji: string;
   collocation: string | null;
   example: string | null;
@@ -20,10 +23,16 @@ type Word = {
 
 type Phase = "morning" | "afternoon" | "evening";
 
-export default function SessionPage() {
+function SessionInner() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const phase = params.phase as Phase;
+  const fromGrain = searchParams.get("from") === "grain";
+  const grainDateKey = searchParams.get("dateKey") ?? "";
+  const homeHref = fromGrain ? "/grain" : "/today";
+  const planApi = fromGrain ? "/api/grain" : "/api/today";
+
   const [words, setWords] = useState<Word[]>([]);
   const [idx, setIdx] = useState(0);
   const [choices, setChoices] = useState<string[]>([]);
@@ -33,16 +42,20 @@ export default function SessionPage() {
   const [recording, setRecording] = useState(false);
 
   useEffect(() => {
-    fetch("/api/today")
+    fetch(planApi)
       .then((r) => r.json())
       .then((d) => {
         if (!d.plan) {
           router.push("/login");
           return;
         }
+        if (fromGrain && grainDateKey && d.plan.dateKey !== grainDateKey) {
+          router.push("/grain");
+          return;
+        }
         setWords(d.plan.phases[phase].words);
       });
-  }, [phase, router]);
+  }, [phase, router, planApi, fromGrain, grainDateKey]);
 
   const word = words[idx];
 
@@ -75,10 +88,7 @@ export default function SessionPage() {
 
   const sentence = useMemo(() => {
     if (!word) return "";
-    return (
-      word.example ||
-      word.sentenceTemplate.replace("_____", word.english)
-    );
+    return word.example || word.sentenceTemplate.replace("_____", word.english);
   }, [word]);
 
   async function submit(correct: boolean) {
@@ -87,14 +97,23 @@ export default function SessionPage() {
     await fetch("/api/session/answer", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ wordId: word.id, correct, phase }),
+      body: JSON.stringify({
+        wordId: word.id,
+        correct,
+        phase,
+        dateKey: fromGrain ? grainDateKey : undefined,
+      }),
     });
     setTimeout(() => {
       if (idx + 1 >= words.length) {
         fetch("/api/session/complete", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ phase }),
+          body: JSON.stringify({
+            phase,
+            mode: fromGrain ? "grain" : "today",
+            dateKey: fromGrain ? grainDateKey : undefined,
+          }),
         })
           .then(async (r) => {
             const d = await r.json().catch(() => ({}));
@@ -102,7 +121,7 @@ export default function SessionPage() {
               sessionStorage.setItem(PET_FOOD_AWARD_KEY, String(d.foodAwarded));
             }
           })
-          .finally(() => router.push("/today"));
+          .finally(() => router.push(homeHref));
       } else {
         setIdx((i) => i + 1);
       }
@@ -132,7 +151,7 @@ export default function SessionPage() {
         setRecording(false);
       }, 3000);
     } catch {
-      /* ignore mic denial — self-check still works */
+      /* ignore mic denial */
     }
   }
 
@@ -147,8 +166,8 @@ export default function SessionPage() {
   return (
     <main className="mx-auto flex min-h-dvh max-w-lg flex-col px-4 py-6">
       <div className="mb-4 flex items-center justify-between gap-2">
-        <button onClick={() => router.push("/today")} className="text-sky-700 font-semibold">
-          ← 回今日
+        <button onClick={() => router.push(homeHref)} className="text-sky-700 font-semibold">
+          ← {fromGrain ? "回攒粮" : "回今日"}
         </button>
         <VoicePicker compact />
         <span className="rounded-full bg-white/80 px-3 py-1 text-sm font-bold text-slate-600">
@@ -167,6 +186,7 @@ export default function SessionPage() {
         {phase === "morning" && (
           <>
             <h2 className="mt-3 text-4xl font-bold text-sky-800">{word.english}</h2>
+            <PhoneticText phonetic={word.phonetic} className="mt-1" />
             <p className="mt-2 text-2xl text-slate-700">{word.chinese}</p>
             {word.collocation && (
               <p className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-amber-800">
@@ -197,19 +217,31 @@ export default function SessionPage() {
               <ThinkTimer active={thinking} onDone={onThinkDone} />
             </div>
             {revealed && (
-              <p className="mt-3 text-2xl font-bold text-sky-700">{word.english}</p>
+              <div className="mt-3 text-center">
+                <p className="text-2xl font-bold text-sky-700">{word.english}</p>
+                <PhoneticText phonetic={word.phonetic} className="mt-1" />
+              </div>
             )}
             <div className="mt-6 grid w-full grid-cols-1 gap-3">
-              {choices.map((c, i) => (
-                <button
-                  key={`${i}-${c}`}
-                  disabled={thinking || feedback !== null}
-                  onClick={() => submit(c === word.english)}
-                  className="rounded-2xl border-2 border-sky-100 bg-sky-50 py-3 text-lg font-semibold text-sky-900 active:scale-[0.98] disabled:opacity-50"
-                >
-                  {c}
-                </button>
-              ))}
+              {choices.map((c, i) => {
+                const choicePhonetic =
+                  c === word.english ? word.phonetic : phoneticFor(c) ?? null;
+                return (
+                  <button
+                    key={`${i}-${c}`}
+                    disabled={thinking || feedback !== null}
+                    onClick={() => submit(c === word.english)}
+                    className="rounded-2xl border-2 border-sky-100 bg-sky-50 py-3 text-lg font-semibold text-sky-900 active:scale-[0.98] disabled:opacity-50"
+                  >
+                    <span className="block">{c}</span>
+                    {choicePhonetic ? (
+                      <span className="mt-0.5 block text-sm font-normal italic text-sky-600/80">
+                        {choicePhonetic}
+                      </span>
+                    ) : null}
+                  </button>
+                );
+              })}
             </div>
             {!thinking && !feedback && (
               <button
@@ -228,6 +260,7 @@ export default function SessionPage() {
         {phase === "evening" && (
           <>
             <h2 className="mt-3 text-4xl font-bold text-indigo-800">{word.english}</h2>
+            <PhoneticText phonetic={word.phonetic} className="mt-1" />
             <p className="mt-4 text-lg text-slate-600">中文意思是？</p>
             <div className="mt-4 grid w-full grid-cols-1 gap-3">
               {choices.map((c, i) => (
@@ -266,5 +299,19 @@ export default function SessionPage() {
         )}
       </div>
     </main>
+  );
+}
+
+export default function SessionPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="flex min-h-dvh items-center justify-center text-slate-500">
+          准备词卡中…
+        </main>
+      }
+    >
+      <SessionInner />
+    </Suspense>
   );
 }

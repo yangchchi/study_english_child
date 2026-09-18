@@ -6,6 +6,8 @@ export type SeedWord = {
   level?: number;
   collocation?: string;
   example?: string;
+  /** Optional override; normally filled from data/phonetics.ts */
+  phonetic?: string;
 };
 
 export type SeedTheme = {

@@ -8,6 +8,7 @@ const schema = z.object({
   wordId: z.string(),
   correct: z.boolean(),
   phase: z.enum(["morning", "afternoon", "evening"]),
+  dateKey: z.string().optional(),
 });
 
 export async function POST(req: Request) {
@@ -21,6 +22,7 @@ export async function POST(req: Request) {
 
   const { wordId, correct, phase } = parsed.data;
   const childId = ctx.profile.id;
+  const key = parsed.data.dateKey ?? dateKey();
 
   const existing = await prisma.wordProgress.findUnique({
     where: { childId_wordId: { childId, wordId } },
@@ -58,7 +60,6 @@ export async function POST(req: Request) {
     },
   });
 
-  const key = dateKey();
   if (correct || phase === "morning") {
     await prisma.studySession.updateMany({
       where: { childId, dateKey: key, phase },

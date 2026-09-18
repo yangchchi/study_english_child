@@ -15,6 +15,7 @@ export type TodayWord = {
   id: string;
   english: string;
   chinese: string;
+  phonetic: string | null;
   emoji: string;
   collocation: string | null;
   example: string | null;
@@ -42,6 +43,7 @@ function mapWord(w: {
   id: string;
   english: string;
   chinese: string;
+  phonetic: string | null;
   emoji: string;
   collocation: string | null;
   example: string | null;
@@ -51,6 +53,7 @@ function mapWord(w: {
     id: w.id,
     english: w.english,
     chinese: w.chinese,
+    phonetic: w.phonetic,
     emoji: w.emoji,
     collocation: w.collocation,
     example: w.example,

@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { phoneticFor } from "../data/phonetics";
 import { themes } from "../data/seed-vocab";
 
 const prisma = new PrismaClient();
@@ -23,12 +24,14 @@ async function main() {
     });
 
     for (const w of theme.words) {
+      const phonetic = w.phonetic ?? phoneticFor(w.english) ?? null;
       await prisma.word.upsert({
         where: {
           english_themeId: { english: w.english, themeId: row.id },
         },
         update: {
           chinese: w.chinese,
+          phonetic,
           emoji: w.emoji ?? "⭐",
           level: w.level ?? 1,
           collocation: w.collocation,
@@ -37,6 +40,7 @@ async function main() {
         create: {
           english: w.english,
           chinese: w.chinese,
+          phonetic,
           emoji: w.emoji ?? "⭐",
           level: w.level ?? 1,
           collocation: w.collocation,
