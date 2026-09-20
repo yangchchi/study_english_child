@@ -8,15 +8,22 @@ COPY package.json package-lock.json ./
 RUN --mount=type=cache,target=/root/.npm \
     npm ci --legacy-peer-deps
 
-# --- builder: no apt (voices download uses Node fetch) ---
+# --- voices: ~120MB; only rebuilds when download script changes ---
+FROM node:22-bookworm-slim AS voices
+WORKDIR /app
+COPY scripts/download-piper-voices.mjs ./scripts/download-piper-voices.mjs
+RUN node scripts/download-piper-voices.mjs
+
+# --- builder: source changes do NOT re-download voices ---
 FROM node:22-bookworm-slim AS builder
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV npm_config_registry=https://registry.npmmirror.com
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+# onnx is dockerignored; restore from the cached voices stage
+COPY --from=voices /app/public/piper-voices ./public/piper-voices
 # package.json "build" already runs prisma generate
-RUN npm run voices:download
 RUN npm run build
 
 # --- runner: openssl for Prisma, apt via Aliyun ---

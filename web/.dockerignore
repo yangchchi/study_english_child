@@ -12,3 +12,6 @@ README.md
 **/*.test.tsx
 vitest.config.*
 tsconfig.tsbuildinfo
+
+# Large Piper models: download in a dedicated cached stage instead
+public/piper-voices/*.onnx
