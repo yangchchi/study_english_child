@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { BottomNav } from "@/components/BottomNav";
 import { FoodStatsBadge } from "@/components/FoodStatsBadge";
+import { PageGreeting } from "@/components/PageGreeting";
 
 type Plan = {
   profile: { nickname: string; avatarEmoji: string; dailyNewWords: number };
@@ -65,13 +66,13 @@ export default function TodayPage() {
 
   return (
     <main className="mx-auto min-h-dvh max-w-lg px-4 pb-52 pt-6">
-      <header className="mb-6 flex items-center justify-between">
-        <div>
-          <p className="text-sm text-slate-500">你好呀</p>
-          <h1 className="text-2xl font-bold text-sky-900">
-            {data ? `${data.profile.avatarEmoji} ${data.profile.nickname}` : "加载中…"}
-          </h1>
-        </div>
+      <header className="mb-6 flex items-center justify-between gap-2">
+        <PageGreeting
+          nickname={data?.profile.nickname}
+          avatarEmoji={data?.profile.avatarEmoji}
+          dateKey={data?.plan.dateKey}
+          loading={!data}
+        />
         <FoodStatsBadge
           foodBalance={data?.food?.foodBalance ?? 0}
           foodEarnedToday={data?.food?.foodEarnedToday ?? 0}

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { BottomNav } from "@/components/BottomNav";
 import { FoodStatsBadge } from "@/components/FoodStatsBadge";
+import { PageGreeting } from "@/components/PageGreeting";
 
 type Plan = {
   profile: { nickname: string; avatarEmoji: string };
@@ -93,12 +94,14 @@ export default function GrainPage() {
 
   return (
     <main className="mx-auto min-h-dvh max-w-lg px-4 pb-52 pt-6">
-      <header className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-emerald-900">
-            {data ? `${data.profile.avatarEmoji} 攒粮` : "加载中…"}
-          </h1>
-        </div>
+      <header className="mb-6 flex items-center justify-between gap-2">
+        <PageGreeting
+          nickname={data?.profile.nickname}
+          avatarEmoji={data?.profile.avatarEmoji}
+          dateKey={data?.plan.dateKey?.startsWith("grain:") ? undefined : data?.plan.dateKey}
+          loading={!data}
+          titleClassName="text-emerald-900"
+        />
         <FoodStatsBadge
           foodBalance={data?.food?.foodBalance ?? 0}
           foodEarnedToday={data?.food?.foodEarnedToday ?? 0}

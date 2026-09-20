@@ -18,17 +18,21 @@ model User {
 }
 
 model ChildProfile {
-  id             String         @id @default(cuid())
-  userId         String
-  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  nickname       String
-  dailyNewWords  Int            @default(20)
-  avatarEmoji    String         @default("🦊")
-  createdAt      DateTime       @default(now())
-  progress       WordProgress[]
-  sessions       StudySession[]
-  recordings     Recording[]
-  pet            Pet?
+  id                String         @id @default(cuid())
+  userId            String
+  user              User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  nickname          String
+  dailyNewWords     Int            @default(20)
+  avatarEmoji       String         @default("🦊")
+  foodBalance       Int            @default(60) // 用户粮仓；初始 3 天口粮
+  foodEarnedToday   Int            @default(0)
+  foodEarnedDateKey String?
+  foodSettledAt     DateTime       @default(now()) // 宠物存活时每 24h 从用户粮仓扣粮
+  createdAt         DateTime       @default(now())
+  progress          WordProgress[]
+  sessions          StudySession[]
+  recordings        Recording[]
+  pet               Pet?
 }
 
 model Theme {
@@ -103,18 +107,14 @@ model Recording {
 }
 
 model Pet {
-  id                String       @id @default(cuid())
-  childId           String       @unique
-  child             ChildProfile @relation(fields: [childId], references: [id], onDelete: Cascade)
-  species           String       // cat | dog
-  name              String
-  foodBalance       Int          @default(0)
-  lastFedDateKey    String?
-  foodSettledAt     DateTime     @default(now()) // 上次结算 24h 扣粮的时间
-  foodEarnedToday   Int          @default(0)
-  foodEarnedDateKey String?
-  status            String       @default("alive") // alive | dead
-  visible           Boolean      @default(true)
-  adoptedAt         DateTime     @default(now())
-  updatedAt         DateTime     @updatedAt
+  id             String       @id @default(cuid())
+  childId        String       @unique
+  child          ChildProfile @relation(fields: [childId], references: [id], onDelete: Cascade)
+  species        String       // cat | dog
+  name           String
+  lastFedDateKey String?
+  status         String       @default("alive") // alive | dead
+  visible        Boolean      @default(true)
+  adoptedAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 }

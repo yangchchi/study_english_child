@@ -28,27 +28,40 @@ export function PetDock() {
   }, []);
 
   const load = useCallback(async () => {
-    const r = await fetch("/api/pet");
-    if (r.status === 401) {
-      setPet(undefined);
-      return;
-    }
-    const d = await r.json();
-    const next = (d.pet ?? null) as PublicPet | null;
-    setPet(next);
+    try {
+      const r = await fetch("/api/pet");
+      if (r.status === 401) {
+        setPet(undefined);
+        return;
+      }
+      if (!r.ok) {
+        setPet(null);
+        return;
+      }
+      const text = await r.text();
+      if (!text) {
+        setPet(null);
+        return;
+      }
+      const d = JSON.parse(text) as { pet?: PublicPet | null };
+      const next = (d.pet ?? null) as PublicPet | null;
+      setPet(next);
 
-    const awardRaw = sessionStorage.getItem(PET_FOOD_AWARD_KEY);
-    if (awardRaw && next) {
-      sessionStorage.removeItem(PET_FOOD_AWARD_KEY);
-      const n = Number(awardRaw) || 1;
-      setToast(`粮食 +${n}`);
-      showBubble(getPetLine(next.mood, "reward"));
-      pulseCelebrate();
-      window.setTimeout(() => setToast(""), 2200);
-      return;
-    }
-    if (next) {
-      setBubble((prev) => prev || getPetLine(next.mood, "idle"));
+      const awardRaw = sessionStorage.getItem(PET_FOOD_AWARD_KEY);
+      if (awardRaw && next) {
+        sessionStorage.removeItem(PET_FOOD_AWARD_KEY);
+        const n = Number(awardRaw) || 1;
+        setToast(`粮食 +${n}`);
+        showBubble(getPetLine(next.mood, "reward"));
+        pulseCelebrate();
+        window.setTimeout(() => setToast(""), 2200);
+        return;
+      }
+      if (next) {
+        setBubble((prev) => prev || getPetLine(next.mood, "idle"));
+      }
+    } catch {
+      setPet(null);
     }
   }, [pulseCelebrate, showBubble]);
 
@@ -144,7 +157,7 @@ export function PetDock() {
       {!pet ? (
         <section className="pet-dock pet-dock-adopt" aria-label="领养宠物">
           <p className="pet-dock-title">领养一个小伙伴</p>
-          <p className="pet-dock-copy">学完今日或攒粮就能换粮食</p>
+          <p className="pet-dock-copy">开局送你 60 粮，学完还能继续攒</p>
           <label className="pet-name-field">
             给它起个名（可空）
             <input
@@ -211,7 +224,7 @@ export function PetDock() {
                 mood={pet.mood}
                 celebrate={celebrate}
               />
-              <span className="pet-food-pill">粮 {pet.foodBalance}</span>
+              <span className="pet-food-pill">{pet.name}</span>
             </button>
 
             {expanded && (

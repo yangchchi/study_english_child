@@ -5,6 +5,7 @@ export type PetMood = "full" | "hungry" | "critical" | "dead";
 export const FEED_COST = 20;
 export const REVIVE_COST = 20;
 export const DAILY_CONSUME = 20;
+export const ADOPT_FOOD_GRANT = DAILY_CONSUME * 3; // 初始 3 天口粮
 export const TODAY_FOOD_AWARD = 20;
 export const GRAIN_FOOD_AWARD = 10;
 
