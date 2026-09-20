@@ -26,23 +26,18 @@ COPY --from=voices /app/public/piper-voices ./public/piper-voices
 # package.json "build" already runs prisma generate
 RUN npm run build
 
-# --- runner: openssl for Prisma, apt via Aliyun ---
-FROM node:22-bookworm-slim AS runner
+# --- runtime-base: Prisma needs libssl3 (slim 不含). 直拉 .deb，跳过 apt-get update ---
+# 保持本 stage 稳定：业务代码变更不会让它失效
+FROM node:22-bookworm-slim AS runtime-base
+COPY scripts/install-runtime-libs.mjs /tmp/install-runtime-libs.mjs
+RUN node /tmp/install-runtime-libs.mjs && rm -f /tmp/install-runtime-libs.mjs
+
+# --- runner: app layers only ---
+FROM runtime-base AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV npm_config_registry=https://registry.npmmirror.com
-
-RUN set -eux; \
-    if [ -f /etc/apt/sources.list.d/debian.sources ]; then \
-      sed -i 's|deb.debian.org|mirrors.aliyun.com|g; s|security.debian.org|mirrors.aliyun.com|g' /etc/apt/sources.list.d/debian.sources; \
-    fi; \
-    if [ -f /etc/apt/sources.list ]; then \
-      sed -i 's|deb.debian.org|mirrors.aliyun.com|g; s|security.debian.org|mirrors.aliyun.com|g' /etc/apt/sources.list; \
-    fi; \
-    apt-get update -y; \
-    apt-get install -y --no-install-recommends openssl ca-certificates; \
-    rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /app/package.json ./
 COPY --from=builder /app/package-lock.json ./
