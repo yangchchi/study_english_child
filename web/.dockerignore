@@ -1,6 +1,14 @@
 node_modules
 .next
 .git
+.gitignore
 .env
+.env.*
 *.log
 .DS_Store
+coverage
+README.md
+**/*.test.ts
+**/*.test.tsx
+vitest.config.*
+tsconfig.tsbuildinfo

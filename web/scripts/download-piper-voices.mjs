@@ -3,9 +3,9 @@
  * Download Piper ONNX voices into public/piper-voices/
  * Sources: Hugging Face rhasspy/piper-voices (MIT)
  * Tries several mirrors (helpful when huggingface.co is slow).
+ * Uses Node fetch so Docker builds do not need curl/apt.
  */
-import { spawnSync } from "node:child_process";
-import { mkdir, access, stat } from "node:fs/promises";
+import { mkdir, access, stat, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -40,14 +40,21 @@ async function exists(file) {
   }
 }
 
-function curlDownload(url, dest) {
-  const result = spawnSync(
-    "curl",
-    ["-fL", "--connect-timeout", "30", "--retry", "3", "-o", dest, url],
-    { encoding: "utf8" },
-  );
-  if (result.status !== 0) {
-    throw new Error(result.stderr?.trim() || `curl exit ${result.status}`);
+async function fetchDownload(url, dest) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 60_000);
+  try {
+    const res = await fetch(url, {
+      signal: controller.signal,
+      redirect: "follow",
+    });
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}`);
+    }
+    const buf = Buffer.from(await res.arrayBuffer());
+    await writeFile(dest, buf);
+  } finally {
+    clearTimeout(timer);
   }
 }
 
@@ -61,7 +68,7 @@ async function downloadWithMirrors(relPath, dest) {
     const url = `${base}/${relPath}`;
     try {
       console.log(`↓ ${url}`);
-      curlDownload(url, dest);
+      await fetchDownload(url, dest);
       if (!(await exists(dest))) throw new Error("file too small / missing");
       console.log(`✓ ${dest}`);
       return;
