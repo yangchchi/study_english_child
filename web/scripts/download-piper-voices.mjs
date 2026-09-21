@@ -5,9 +5,12 @@
  * Tries several mirrors (helpful when huggingface.co is slow).
  * Uses Node fetch so Docker builds do not need curl/apt.
  */
-import { mkdir, access, stat, writeFile } from "node:fs/promises";
+import { mkdir, access, stat } from "node:fs/promises";
+import { createWriteStream } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
 
 const MIRRORS = [
   "https://hf-mirror.com/rhasspy/piper-voices/resolve/v1.0.0",
@@ -27,6 +30,9 @@ const VOICES = [
   },
 ];
 
+/** ~60MB models; allow slow links (connect + transfer). */
+const FETCH_MS = 10 * 60_000;
+
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const outDir = join(root, "public", "piper-voices");
 
@@ -42,7 +48,7 @@ async function exists(file) {
 
 async function fetchDownload(url, dest) {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 60_000);
+  const timer = setTimeout(() => controller.abort(), FETCH_MS);
   try {
     const res = await fetch(url, {
       signal: controller.signal,
@@ -51,8 +57,8 @@ async function fetchDownload(url, dest) {
     if (!res.ok) {
       throw new Error(`HTTP ${res.status}`);
     }
-    const buf = Buffer.from(await res.arrayBuffer());
-    await writeFile(dest, buf);
+    if (!res.body) throw new Error("empty body");
+    await pipeline(Readable.fromWeb(res.body), createWriteStream(dest));
   } finally {
     clearTimeout(timer);
   }
