@@ -1,54 +1,69 @@
 "use client";
 
-import {
-  DEFAULT_SPEAK_RATE,
-  PIPER_VOICES,
-  getSavedSpeakRate,
-  type VoiceGender,
-} from "./piper-voices";
-
-export type { VoiceGender };
-export {
-  DEFAULT_SPEAK_RATE,
-  SPEAK_RATE_MAX,
-  SPEAK_RATE_MIN,
-  SPEAK_RATE_STEP,
-  clampSpeakRate,
-  getSavedSpeakRate,
-  saveSpeakRate,
-} from "./piper-voices";
+export type VoiceGender = "female" | "male";
 
 export type VoicePreset = {
   id: VoiceGender;
   label: string;
   emoji: string;
   desc: string;
-  /** Preferred Web Speech / system voice name fragments (fallback only) */
+  /** Preferred Web Speech / system voice name fragments */
   nameHints: string[];
   langHints: string[];
   rate: number;
   pitch: number;
 };
 
-/**
- * Primary playback is Piper (local ONNX). Web Speech presets below are
- * fallback when Piper models / WASM fail to load.
- */
+/** Default playback speed for kids (configurable on 我的). */
+export const DEFAULT_SPEAK_RATE = 0.7;
+export const SPEAK_RATE_MIN = 0.5;
+export const SPEAK_RATE_MAX = 1;
+export const SPEAK_RATE_STEP = 0.05;
+
+const RATE_STORAGE_KEY = "wordcatch-speak-rate";
+
+export function clampSpeakRate(rate: number): number {
+  if (!Number.isFinite(rate)) return DEFAULT_SPEAK_RATE;
+  const stepped = Math.round(rate / SPEAK_RATE_STEP) * SPEAK_RATE_STEP;
+  const clamped = Math.min(SPEAK_RATE_MAX, Math.max(SPEAK_RATE_MIN, stepped));
+  return Math.round(clamped * 100) / 100;
+}
+
+export function getSavedSpeakRate(): number {
+  if (typeof window === "undefined") return DEFAULT_SPEAK_RATE;
+  const raw = window.localStorage.getItem(RATE_STORAGE_KEY);
+  if (raw == null || raw === "") return DEFAULT_SPEAK_RATE;
+  return clampSpeakRate(Number(raw));
+}
+
+export function saveSpeakRate(rate: number) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(RATE_STORAGE_KEY, String(clampSpeakRate(rate)));
+}
+
 export const VOICE_PRESETS: VoicePreset[] = [
   {
     id: "female",
-    label: PIPER_VOICES.female.label,
+    label: "女老师",
     emoji: "👩‍🏫",
-    desc: PIPER_VOICES.female.desc,
+    desc: "系统英语女声，优先较柔和音色",
     nameHints: [
-      "Samantha",
-      "Google US English",
-      "Microsoft Aria",
-      "Microsoft Jenny",
-      "Ava",
-      "Allison",
-      "Zoe",
-      "Susan",
+      "allison",
+      "susan",
+      "serena",
+      "samantha",
+      "victoria",
+      "ava",
+      "tessa",
+      "martha",
+      "moira",
+      "karen",
+      "flo",
+      "microsoft jenny",
+      "microsoft aria",
+      "zira",
+      "google uk english female",
+      "female",
     ],
     langHints: ["en-US", "en_US", "en-GB", "en_GB"],
     rate: DEFAULT_SPEAK_RATE,
@@ -56,16 +71,21 @@ export const VOICE_PRESETS: VoicePreset[] = [
   },
   {
     id: "male",
-    label: PIPER_VOICES.male.label,
+    label: "男老师",
     emoji: "👨‍🏫",
-    desc: PIPER_VOICES.male.desc,
+    desc: "系统英语男声",
     nameHints: [
-      "Daniel",
-      "Google UK English Male",
-      "Microsoft Guy",
-      "Alex",
-      "Aaron",
-      "Fred",
+      "aaron",
+      "alex",
+      "daniel",
+      "microsoft guy",
+      "microsoft david",
+      "microsoft mark",
+      "fred",
+      "tom",
+      "nathan",
+      "google uk english male",
+      "male",
     ],
     langHints: ["en-US", "en_US", "en-GB", "en_GB"],
     rate: DEFAULT_SPEAK_RATE,
@@ -238,14 +258,7 @@ export async function speakEnglish(
   gender: VoiceGender = getSavedVoiceGender(),
 ): Promise<string | null> {
   if (typeof window === "undefined") return null;
-
-  try {
-    const { speakWithPiper } = await import("./piper-engine");
-    return await speakWithPiper(text, gender);
-  } catch (err) {
-    console.warn("[tts] Piper failed, falling back to Web Speech", err);
-    return speakWithWebSpeech(text, gender);
-  }
+  return speakWithWebSpeech(text, gender);
 }
 
 export function listMatchedVoices(gender: VoiceGender): Promise<
