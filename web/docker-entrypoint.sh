@@ -1,7 +1,5 @@
 #!/bin/sh
 set -e
-# Prisma CLI (devDependency at build time; copied into the slim runner)
-node ./node_modules/prisma/build/index.js migrate deploy
-# Seed is best-effort; ignore failures on restart
-node ./prisma/seed.cjs || true
-exec node server.js
+npx prisma migrate deploy
+npx tsx prisma/seed.ts || true
+exec npx next start -H 0.0.0.0 -p 3000
