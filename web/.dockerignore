@@ -12,3 +12,5 @@ README.md
 **/*.test.tsx
 vitest.config.*
 tsconfig.tsbuildinfo
+docs
+*.md
