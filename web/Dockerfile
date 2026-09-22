@@ -3,7 +3,6 @@
 # --- deps: cached unless package*.json changes ---
 FROM node:22-bookworm-slim AS deps
 WORKDIR /app
-ENV npm_config_registry=https://registry.npmmirror.com
 ENV npm_config_fetch_retries=5
 ENV npm_config_fetch_retry_mintimeout=20000
 COPY package.json package-lock.json ./
@@ -19,7 +18,6 @@ RUN node /tmp/install-runtime-libs.mjs && rm -f /tmp/install-runtime-libs.mjs
 FROM openssl-base AS builder
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV npm_config_registry=https://registry.npmmirror.com
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 # package.json "build" = prisma generate && next build (standalone)
