@@ -34,7 +34,7 @@ export function VoicePicker({ compact = false }: { compact?: boolean }) {
     setGender(next);
     saveVoiceGender(next);
     setBusy(true);
-    setMatched("正在加载本地人声模型…");
+    setMatched("正在试听系统发音…");
     try {
       const name = await speakEnglish("Hello! I like apples.", next);
       setMatched(name ? `当前音色：${name}` : "播放失败，请稍后重试");
@@ -89,7 +89,7 @@ export function VoicePicker({ compact = false }: { compact?: boolean }) {
     <section className="rounded-3xl bg-white/85 p-5 shadow-sm">
       <h2 className="font-bold text-slate-800">🔊 标准发音</h2>
       <p className="mt-1 text-sm text-slate-500">
-        本地 Piper 人声：女老师 HFC / 男老师 Ryan（首次加载约需几秒）。
+        使用本机系统英语发音（女声优先较柔和音色）。
       </p>
       <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
         {VOICE_PRESETS.map((p) => (
@@ -148,9 +148,7 @@ export function VoicePicker({ compact = false }: { compact?: boolean }) {
 
       {matched && <p className="mt-3 text-center text-sm text-emerald-700">{matched}</p>}
       <p className="mt-2 text-xs leading-relaxed text-slate-400">
-        语速保存在本机，学习页发音会跟着这里的设置走。人声模型在{" "}
-        <code>public/piper-voices/</code>
-        ；缺失时会尝试联网缓存，仍失败则回退系统发音。
+        语速保存在本机，学习页发音会跟着这里的设置走。实际音色取决于设备/浏览器已安装的英语语音。
       </p>
     </section>
   );
