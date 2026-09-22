@@ -2,16 +2,15 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
-First, download local Piper voices (≈120MB, once), then run the dev server:
+Run the development server:
 
 ```bash
-npm run voices:download
 npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-Pronunciation uses two bundled Piper teachers (female `hfc_female`, male `ryan`) under `public/piper-voices/`. If models are missing, the app falls back to the browser voice.
+Pronunciation uses the device’s system English voices (`speechSynthesis`), with preferred female/male name lists.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 

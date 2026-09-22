@@ -45,8 +45,3 @@ next-env.d.ts
 *.db-journal
 *.db-wal
 *.db-shm
-
-# Piper ONNX voice models (download via npm run voices:download)
-# Keep tiny .onnx.json configs in git for reference.
-/public/piper-voices/*.onnx
-!/public/piper-voices/*.onnx.json

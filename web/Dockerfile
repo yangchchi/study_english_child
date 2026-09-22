@@ -8,13 +8,6 @@ COPY package.json package-lock.json ./
 RUN --mount=type=cache,target=/root/.npm \
     npm ci --legacy-peer-deps
 
-# --- voices: reuse local .onnx if present; else download (cached until voices change) ---
-FROM node:22-bookworm-slim AS voices
-WORKDIR /app
-COPY scripts/download-piper-voices.mjs ./scripts/download-piper-voices.mjs
-COPY public/piper-voices/ ./public/piper-voices/
-RUN node scripts/download-piper-voices.mjs
-
 # --- openssl-base: Prisma needs libssl3 (slim 不含). 直拉 .deb，跳过 apt-get update ---
 # builder + runner 共用，保持稳定以便缓存
 FROM node:22-bookworm-slim AS openssl-base
@@ -28,7 +21,6 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV npm_config_registry=https://registry.npmmirror.com
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-COPY --from=voices /app/public/piper-voices ./public/piper-voices
 # package.json "build" already runs prisma generate
 RUN npm run build
 
